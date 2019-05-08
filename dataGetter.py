@@ -1,7 +1,9 @@
 import gzip
 import numpy as np
 
-def getFile(filename):
+__name__ = 'dataGetter'
+
+def getData(filename):
     itt = np.intc(0)
 
     f = gzip.open(filename, 'rb')
@@ -30,5 +32,7 @@ def getFile(filename):
             Labels[itt] = int.from_bytes(f.read(1), byteorder = 'big')
         return Labels
 
-theOutput = getFile(filename = 'train-images-idx3-ubyte.gz')
-print(theOutput.shape)
+def getFiles():
+    fileNames = np.array([['train-images-idx3-ubyte.gz', 'train-labels-idx1-ubyte.gz'], \
+                          ['t10k-images-idx3-ubyte.gz',  't10k-labels-idx1-ubyte.gz']], dtype = np.str)
+    return fileNames
