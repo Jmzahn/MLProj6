@@ -2,23 +2,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
+
+__name__ = "NNarch"
+
 plt.show()
 #call for Network of shape 3 conv layers with 50 filters starting at 7 stride 3 and MLP arch of 5*5
 #w, y = Network([[50,7],[35,5],[20,3]],[5,5,5,5,5],5000,.0001,1)
 def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFilters,filterSize] // shape = array, (Layers)
     convShape=np.array(convShape)
     shape=np.array(shape)
-    L=1+shape.shape[0]+1#Layers = conv output + hidden layers + output
-    E=np.intc(e)#epochs
-    R=np.float64(r)#Learning Rate
-    M=m
+    L = 1 + shape.shape[0] + 1  #Layers = conv output + hidden layers + output
+    E = np.intc(e)  #epochs
+    R = np.float64(r)   #Learning Rate
+    M = m
     W = []
     B = []
 
-    X, T= getData()
-    X-= int(np.mean(X))
-    X/= int(np.std(X))
-    train_data = np.hstack((X,T))
+    X, T = getData()
+    X -= int(np.mean(X))
+    X /= int(np.std(X))
 
     loss = crossEntropy
     hfinal = softMax
@@ -86,30 +88,30 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M):
     return W, Z
     
 
-def ArbConvolve(imgs,convShape):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
+def ArbConvolve(imgs, convShape):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
     filters = []
     flatFMPools = []
     it=np.intc(0)
-    while(it<imgs.shape[0]):
+    while(it < imgs.shape[0]):
         itt=np.intc(0)
         stddev = 1/np.sqrt(np.prod(convShape[it][1]))
         LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[it][0],convShape[it][1],convShape[it][1]))
         filters.append(LFilter)
-        while(itt<filters[-1].shape[0]):
+        while(itt < filters[-1].shape[0]):
             flatFMPools.append(pool(relu(conv(imgs[it],filters[itt]))).reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
-            itt+=np.intc(1)
-        it+=np.intc(1)
+            itt += np.intc(1)
+        it += np.intc(1)
     return filters, flatFMPools
 
 def conv(img, conv_filter):
-    if len(img.shape) > 2 or len(conv_filter.shape) > 3: # Check if number of image channels matches the filter depth.
+    if len(img.shape) > 2 or len(conv_filter.shape) > 3:    # Check if number of image channels matches the filter depth.
         if img.shape[-1] != conv_filter.shape[-1]:
             print("Error: Number of channels in both image and filter must match.")
             sys.exit()
-    if conv_filter.shape[1] != conv_filter.shape[2]: # Check if filter dimensions are equal.
+    if conv_filter.shape[1] != conv_filter.shape[2]:    # Check if filter dimensions are equal.
         print('Error: Filter must be a square matrix. I.e. number of rows and columns must match.')
         sys.exit()
-    if conv_filter.shape[1]%2==0: # Check if filter diemnsions are odd.
+    if conv_filter.shape[1] % 2 == 0:   # Check if filter diemnsions are odd.
         print('Error: Filter must have an odd size. I.e. number of rows and columns must be odd.')
         sys.exit()
 
