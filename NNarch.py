@@ -1,77 +1,57 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
+import sys
 
 plt.show()
-def Network(shape,p,e,r,m):#
-    
-    L=len(shape)+2#Layers = hidden layers + 2
+#call for Network of shape 3 conv layers with 50 filters starting at 7 stride 3 and MLP arch of 5*5
+#w, y = Network([[50,7],[35,5],[20,3]],[5,5,5,5,5],5000,.0001,1)
+def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFilters,filterSize] // shape = array, (Layers)
+    convShape=np.array(convShape)
     shape=np.array(shape)
-    P=p#problem type, 0 for Class., 1 for Reg.
+    L=1+shape.shape[0]+1#Layers = conv output + hidden layers + output
     E=np.intc(e)#epochs
     R=np.float64(r)#Learning Rate
     M=m
     W = []
     B = []
 
-    if(P==0):#if problem is classification
-        X, T = genCdata()
-        loss = logLoss
-        hfinal = tanh
-        h = tanh
-        hPrime = tanhDx
-        graph = Cgraph
-        I = [X.shape[0]]
-        O = [T.shape[0]]
-        shape = np.concatenate((I,shape,O))
-    elif(P==1):#if problem is regression
-        X, T = genRData()
-        loss = leastSquared
-        hfinal = identity
-        h = np.tanh
-        hPrime = tanhDx
-        graph = Rgraph
-        I = [X.shape[0]]
-        O = [T.shape[0]]
-        #T=T.T
-        shape = np.concatenate((I,shape,O))
+    X, T= getData()
+    X-= int(np.mean(X))
+    X/= int(np.std(X))
+    train_data = np.hstack((X,T))
+
+    loss = crossEntropy
+    hfinal = softMax
+    h = tanh
+    hPrime = tanhDx
+    I = [X.shape[0]]
+    O = [10]
+    shape = np.concatenate((I,shape,O))
+    
     print('Xs shape: ',X.shape)
-    w0 = (np.float64(2)*np.random.rand(shape[1],X.shape[1]).astype(np.float64) - np.float64(1))
+    w0 = np.random.standard_normal(size=(shape[1],X.shape[1])).astype(np.float64) * np.float64(0.01)
+    #w0 = (np.float64(2)*np.random.rand(shape[1],X.shape[1]).astype(np.float64) - np.float64(1))
     W.append(w0)
     b0 = np.full((shape[1],shape[0]),0.1,dtype=np.float64)
     #b0 = (np.float64(2.0)*np.random.rand(shape[1],shape[0]).astype(np.float64) - np.float64(1.0))#
     B.append(b0)
     for itt in range(1,L-1):
-        w = (np.float64(2)*np.random.rand(shape[itt+1],shape[itt]).astype(np.float64) - np.float64(1))
+        w = np.random.standard_normal(size=(shape[itt+1],shape[itt])).astype(np.float64) * np.float64(0.01)
+        #w = (np.float64(2)*np.random.rand(shape[itt+1],shape[itt]).astype(np.float64) - np.float64(1))
         W.append(w)
         b = np.full((shape[itt+1],shape[0]),0.1,dtype=np.float64)
         #b = (np.float64(2.0)*np.random.rand(shape[itt+1],shape[0]).astype(np.float64) - np.float64(1.0))#
         B.append(b)
         
-    W, y = fit(X,T,W,B,E,R,L,shape,hfinal,h,hPrime,loss,graph,M)   
+    W, y = fit(X,T,W,B,E,R,L,convShape, shape,hfinal,h,hPrime,loss,M)   
     print(y[-1])
     return W, y
 
-def genCdata():#data for Xor classification problem
-    X=np.array([[-1,-1],[-1,1],[1,1],[1,-1]],dtype=np.float64)
-    T=np.array([[0,1,0,1]],dtype=np.float64)
-    return X, T
 
-def genRData():#data for regression problem
-    X=np.zeros((50,1), dtype=np.float64)
-    T=np.zeros((50,1), dtype=np.float64).T
-    itt = np.intc(0)
-    while(itt<50):
-        X[itt] = (np.float64(2)*np.random.random())-np.float64(1)
-        itt+= np.intc(1)
-    itt = np.intc(0)
-    while(itt<50):
-        T[0][itt] = np.sin(np.float64(2)*np.pi*X[itt])+np.float64(0.3)*np.random.random()#+np.float64(1)
-        itt+= np.intc(1)
-    return X, T
+def getData():#TODO
+    return x,t
 
-def fit(X,T,W,B,E,R,L,shape,hfinal,h,hP,loss,graph,M):
+def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M):
     xplt = np.arange(E)
     yplt = np.zeros((E),dtype=np.float64)
     #plot stuff
@@ -87,10 +67,11 @@ def fit(X,T,W,B,E,R,L,shape,hfinal,h,hP,loss,graph,M):
     itt = np.intc(0)
     
     while(itt<E):#training loop
-        Z = forwardProp(X,W,B,hfinal,h,L,shape)
+        filters, flatFMpools = ArbConvolve(X,convShape)
+        Z = forwardProp(flatFMpools,W,B,hfinal,h,L,shape)
         target = T
-        
         W, B, yplt = backProp(Z,target,R,hP,W,B,L,shape,itt,yplt,loss,M)
+        convBackProp()#TODO
         line1.set_ydata(yplt)
         if itt%20==0:#line plotting 
             ax.relim()
@@ -99,11 +80,110 @@ def fit(X,T,W,B,E,R,L,shape,hfinal,h,hP,loss,graph,M):
             fig.canvas.flush_events()
         itt+=np.intc(1)
     print(Z[-1])
-    graph(X,T,W,B,h,shape,fig,ax,hfinal)
+    
 
     
     return W, Z
     
+
+def ArbConvolve(imgs,convShape):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
+    filters = []
+    flatFMPools = []
+    it=np.intc(0)
+    while(it<imgs.shape[0]):
+        itt=np.intc(0)
+        stddev = 1/np.sqrt(np.prod(convShape[it][1]))
+        LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[it][0],convShape[it][1],convShape[it][1]))
+        filters.append(LFilter)
+        while(itt<filters[-1].shape[0]):
+            flatFMPools.append(pool(relu(conv(imgs[it],filters[itt]))).reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
+            itt+=np.intc(1)
+        it+=np.intc(1)
+    return filters, flatFMPools
+
+def conv(img, conv_filter):
+    if len(img.shape) > 2 or len(conv_filter.shape) > 3: # Check if number of image channels matches the filter depth.
+        if img.shape[-1] != conv_filter.shape[-1]:
+            print("Error: Number of channels in both image and filter must match.")
+            sys.exit()
+    if conv_filter.shape[1] != conv_filter.shape[2]: # Check if filter dimensions are equal.
+        print('Error: Filter must be a square matrix. I.e. number of rows and columns must match.')
+        sys.exit()
+    if conv_filter.shape[1]%2==0: # Check if filter diemnsions are odd.
+        print('Error: Filter must have an odd size. I.e. number of rows and columns must be odd.')
+        sys.exit()
+
+    # An empty feature map to hold the output of convolving the filter(s) with the image.
+    feature_maps = np.zeros((img.shape[0]-conv_filter.shape[1]+1, 
+                                img.shape[1]-conv_filter.shape[1]+1, 
+                                conv_filter.shape[0]))
+    
+    # Convolving the image by the filter(s).
+    for filter_num in range(conv_filter.shape[0]):
+        print("Filter ", filter_num + 1)
+        curr_filter = conv_filter[filter_num, :] # getting a filter from the bank.
+        """ 
+        Checking if there are mutliple channels for the single filter.
+        If so, then each channel will convolve the image.
+        The result of all convolutions are summed to return a single feature map.
+        """
+        if len(curr_filter.shape) > 2:
+            conv_map = conv_(img[:, :, 0], curr_filter[:, :, 0]) # Array holding the sum of all feature maps.
+            for ch_num in range(1, curr_filter.shape[-1]): # Convolving each channel with the image and summing the results.
+                conv_map = conv_map + conv_(img[:, :, ch_num], 
+                                  curr_filter[:, :, ch_num])
+        else: # There is just a single channel in the filter.
+            conv_map = conv_(img, curr_filter)
+        feature_maps[:, :, filter_num] = conv_map # Holding feature map with the current filter.
+    return feature_maps # Returning all feature maps.
+
+def conv_(img, conv_filter):
+    filter_size = conv_filter.shape[1]
+    result = np.zeros((img.shape))
+    #Looping through the image to apply the convolution operation.
+    for r in np.arange(filter_size/2.0, img.shape[0]-filter_size/2.0+1):
+        for c in np.arange(filter_size/2.0, img.shape[1]-filter_size/2.0+1):
+            """
+            Getting the current region to get multiplied with the filter.
+            How to loop through the image and get the region based on 
+            the image and filer sizes is the most tricky part of convolution.
+            """
+            curr_region = img[r-np.uint16(np.floor(filter_size/2.0)):r+np.uint16(np.ceil(filter_size/2.0)), 
+                              c-np.uint16(np.floor(filter_size/2.0)):c+np.uint16(np.ceil(filter_size/2.0))]
+            #Element-wise multipliplication between the current region and the filter.
+            curr_result = curr_region * conv_filter
+            conv_sum = np.sum(curr_result) #Summing the result of multiplication.
+            result[r, c] = conv_sum #Saving the summation in the convolution layer feature map.
+            
+    #Clipping the outliers of the result matrix.
+    final_result = result[np.uint16(filter_size/2.0):result.shape[0]-np.uint16(filter_size/2.0), 
+                          np.uint16(filter_size/2.0):result.shape[1]-np.uint16(filter_size/2.0)]
+    return final_result
+
+def pool(feature_map, size=2, stride=2):
+    #Preparing the output of the pooling operation.
+    pool_out = np.zeros((np.uint16((feature_map.shape[0]-size+1)/stride+1),
+                            np.uint16((feature_map.shape[1]-size+1)/stride+1),
+                            feature_map.shape[-1]))
+    for map_num in range(feature_map.shape[-1]):
+        r2 = 0
+        for r in np.arange(0,feature_map.shape[0]-size+1, stride):
+            c2 = 0
+            for c in np.arange(0, feature_map.shape[1]-size+1, stride):
+                pool_out[r2, c2, map_num] = np.max([feature_map[r:r+size,  c:c+size, map_num]])
+                c2 = c2 + 1
+            r2 = r2 +1
+    return pool_out
+
+def relu(feature_map):
+    #Preparing the output of the ReLU activation function.
+    relu_out = np.zeros(feature_map.shape)
+    for map_num in range(feature_map.shape[-1]):
+        for r in np.arange(0,feature_map.shape[0]):
+            for c in np.arange(0, feature_map.shape[1]):
+                relu_out[r, c, map_num] = np.max([feature_map[r, c, map_num], 0])
+    return relu_out
+
 def forwardProp(Z,W,B,hfinal,h,L,shape):
     z = [np.array(Z).T]
     itt = np.intc(0)
@@ -176,41 +256,8 @@ def identity(x):
     return x
 def leastSquared(y,t):
     return np.square(np.sum(y-t))
-def Cgraph(X,T,W,B,h,shape,fig,ax,hfinal):
-    xline = np.linspace(-2, 2, 96)
-    yline = np.linspace(-2, 2, 96)
-    Xmesh, Ymesh = np.meshgrid(xline, yline)
-    zline = predict(np.array([Xmesh,Ymesh]).T,W,B,h,shape,hfinal)
-    ax=plt.axes(projection="3d")
-    print(zline.shape)
-    surf = ax.plot_surface(Xmesh, Ymesh, zline, cmap=cm.coolwarm,linewidth=0,antialiased=False,alpha=.8)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('pred')
-    ax.set_title('3D')
-    ax.set_zlim(0, 1.01)
-    fig.colorbar(surf, shrink=0.5, aspect=5)
-    for i in range(shape[0]):
-        ax.scatter(X[i][0],X[i][1] , T[0][i], c='b', marker='.', zorder=10)
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-    plt.show()
-    return
-def Rgraph(X,T,W,B,h,shape,fig,ax,hfinal):
-    xline = np.linspace(-1, 1, 200)
-    Z = np.zeros(xline.shape,dtype=np.float64)
-    it=np.intc(0)
-    while(it<xline.shape[0]):
-        i=np.intc(0)
-        Z[it]=predictSingle(xline[it].T,W,B,h,hfinal)
-        it+=np.intc(1)    
-    ax.axis([-1,1,-1,1])
-    for i in range(X.shape[0]):
-        ax.scatter(X[i][0], T[0][i], c='b', marker='.', zorder=10)
-    ax.plot(xline,Z, 'r-')
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-    plt.ylabel('Y')
-    plt.xlabel('X')
-    plt.show()
-    return
+def crossEntropy(probs, label):
+    return -np.sum(label * np.log(probs))
+def softMax(raw_preds):
+    out = np.exp(raw_preds)
+    return out/np.sum(out)
