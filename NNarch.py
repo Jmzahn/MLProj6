@@ -17,7 +17,8 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
     M = m
     W = []
     B = []
-
+    filters = []
+    FMPools = []
     X, T = getData()
     X -= int(np.mean(X))
     X /= int(np.std(X))
@@ -30,6 +31,18 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
     O = [10]
     shape = np.concatenate((I,shape,O))
     
+    stddev = 1/np.sqrt(np.prod(convShape[0][1]))
+    LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[0][0],convShape[0][1],convShape[0][1]))
+    filters.append(LFilter)
+    itt=np.intc(1)
+    FMPools.append(pool(relu(conv(X[0],filters[-1]))))
+    while(itt < len(convShape)):#for each layer after the first
+            stddev = 1/np.sqrt(np.prod(convShape[itt][1]))
+            LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[itt][0],convShape[itt][1],convShape[itt][1],FMPools[-1].shape[-1]))
+            filters.append(LFilter)
+            FMPools.append(pool(relu(conv(X[0],filters[-1]))))
+            itt += np.intc(1)
+
     print('Xs shape: ',X.shape)
     w0 = np.random.standard_normal(size=(shape[1],X.shape[1])).astype(np.float64) * np.float64(0.01)
     #w0 = (np.float64(2)*np.random.rand(shape[1],X.shape[1]).astype(np.float64) - np.float64(1))
@@ -45,7 +58,7 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
         #b = (np.float64(2.0)*np.random.rand(shape[itt+1],shape[0]).astype(np.float64) - np.float64(1.0))#
         B.append(b)
         
-    W, y = fit(X,T,W,B,E,R,L, convShape, shape, hfinal, h, hPrime, loss, M)   
+    W, y = fit(X,T,W,B,E,R,L, convShape, shape, hfinal, h, hPrime, loss, M, filters, FMPools)   
     print(y[-1])
     return W, y
 
@@ -53,7 +66,7 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
 def getData():#TODO
     return x,t
 
-def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M):
+def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M,filters,FMPools):
     xplt = np.arange(E)
     yplt = np.zeros((E),dtype=np.float64)
     #plot stuff
@@ -69,7 +82,7 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M):
     itt = np.intc(0)
     
     while(itt<E):#training loop
-        filters, flatFMpools, FMPools = ArbConvolve(X,convShape)
+        flatFMpools, FMPools = ArbConvolve(X,convShape,filters,FMPools)
         Z = forwardProp(flatFMpools,W,B,hfinal,h,L,shape)
         target = T
         W, B, yplt, err = backProp(Z,target,R,hP,W,B,L,shape,itt,yplt,loss,M)
@@ -87,37 +100,21 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M):
     
     return W, Z
     
-def ArbConvolve(imgs, convShape):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
-    filters = []
-    FMPools = []
+def ArbConvolve(imgs, convShape, filters, FMPools):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
+    filters = filters
+    FMPools = FMPools
     flatFMPools = []
-    #filters probably shouldnt be created here otherwise there will be a new one each epoch,
-    #maybe move their creation to where the weights and biases are made
-    stddev = 1/np.sqrt(np.prod(convShape[0][1]))
-    LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[0][0],convShape[0][1],convShape[0][1]))
-    filters.append(LFilter)
-    itt=np.intc(1)
-    FMPools.append(pool(relu(conv(imgs[0],filters[-1]))))
     flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
-    #this first while loop makes the filters by going through one image
-    while(itt < len(convShape)):#for each layer after the first
-            stddev = 1/np.sqrt(np.prod(convShape[itt][1]))
-            LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[itt][0],convShape[itt][1],convShape[itt][1],FMPools[-1].shape[-1]))
-            filters.append(LFilter)
-            FMPools.append(pool(relu(conv(imgs[0],filters[-1]))))
-            
-            flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
-            itt += np.intc(1)
     #this while loop uses the filters created and then goes through the rest of the images
     it=np.intc(1)
     while(it < imgs.shape[0]):#for num of imgs
         itt=np.intc(0)
         while(itt < len(filters)):#for each layer
             FMPools.append(pool(relu(conv(imgs[it],filters[itt]))))
-            flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
             itt += np.intc(1)
+        flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
         it += np.intc(1)
-    return filters, flatFMPools, FMPools
+    return flatFMPools, FMPools
 
 def conv(img, conv_filter):
     if len(img.shape) > 2 or len(conv_filter.shape) > 3:    # Check if number of image channels matches the filter depth.
