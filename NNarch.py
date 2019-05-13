@@ -69,11 +69,11 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M):
     itt = np.intc(0)
     
     while(itt<E):#training loop
-        filters, flatFMpools = ArbConvolve(X,convShape)
+        filters, flatFMpools, FMPools = ArbConvolve(X,convShape)
         Z = forwardProp(flatFMpools,W,B,hfinal,h,L,shape)
         target = T
-        W, B, yplt = backProp(Z,target,R,hP,W,B,L,shape,itt,yplt,loss,M)
-        convBackProp()#TODO
+        W, B, yplt, err = backProp(Z,target,R,hP,W,B,L,shape,itt,yplt,loss,M)
+        convBackprop(err, {X, FMPools})#TODO
         line1.set_ydata(yplt)
         if itt%20==0:#line plotting 
             ax.relim()
@@ -117,7 +117,7 @@ def ArbConvolve(imgs, convShape):#convShape = ndarray, (convLayers X 2), [numFil
             flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
             itt += np.intc(1)
         it += np.intc(1)
-    return filters, flatFMPools
+    return filters, flatFMPools, FMPools
 
 def conv(img, conv_filter):
     if len(img.shape) > 2 or len(conv_filter.shape) > 3:    # Check if number of image channels matches the filter depth.
@@ -239,12 +239,11 @@ def backProp(y,T,R,hP,W,B,L,shape,itt,yplt,loss,M):
         np.multiply(np.dot(W[itter].T,dlta[-1]),hP(y[itter]),out=err)
         dlta.append(err)
         itter-=np.intc(1)
-    return w, b, yplt
+    return w, b, yplt, err
 
 # cache is the stored X and W values from the previous forward pass
-def convBackprop(dH, cache, stride):
+def convBackprop(dH, cache):
     (X, W) = cache
-    (nHprev, nWprev) = X.shape
     (f,f) = W.shape
 
     (nH, nW) = dH.shape
