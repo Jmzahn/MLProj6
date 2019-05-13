@@ -87,18 +87,34 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M):
     
     return W, Z
     
-
 def ArbConvolve(imgs, convShape):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
     filters = []
+    FMPools = []
     flatFMPools = []
-    it=np.intc(0)
-    while(it < imgs.shape[0]):
+    #filters probably shouldnt be created here otherwise there will be a new one each epoch,
+    #maybe move their creation to where the weights and biases are made
+    stddev = 1/np.sqrt(np.prod(convShape[0][1]))
+    LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[0][0],convShape[0][1],convShape[0][1]))
+    filters.append(LFilter)
+    itt=np.intc(1)
+    FMPools.append(pool(relu(conv(imgs[0],filters[-1]))))
+    flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
+    #this first while loop makes the filters by going through one image
+    while(itt < len(convShape)):#for each layer after the first
+            stddev = 1/np.sqrt(np.prod(convShape[itt][1]))
+            LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[itt][0],convShape[itt][1],convShape[itt][1],FMPools[-1].shape[-1]))
+            filters.append(LFilter)
+            FMPools.append(pool(relu(conv(imgs[0],filters[-1]))))
+            
+            flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
+            itt += np.intc(1)
+    #this while loop uses the filters created and then goes through the rest of the images
+    it=np.intc(1)
+    while(it < imgs.shape[0]):#for num of imgs
         itt=np.intc(0)
-        stddev = 1/np.sqrt(np.prod(convShape[it][1]))
-        LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[it][0],convShape[it][1],convShape[it][1]))
-        filters.append(LFilter)
-        while(itt < filters[-1].shape[0]):
-            flatFMPools.append(pool(relu(conv(imgs[it],filters[itt]))).reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
+        while(itt < len(filters)):#for each layer
+            FMPools.append(pool(relu(conv(imgs[it],filters[itt]))))
+            flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
             itt += np.intc(1)
         it += np.intc(1)
     return filters, flatFMPools

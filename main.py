@@ -5,7 +5,7 @@ class main:
     def __init__(self):
         pass
 
-    def runBitch(self):
+    def run(self):
         filenames = dataGetter.getFiles()
 
         print("Getting training images...")
