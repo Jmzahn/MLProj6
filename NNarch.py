@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import dataGetter
 
 
 __name__ = "NNarch"
@@ -64,7 +65,13 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
 
 
 def getData():#TODO
-    return x,t
+    filenames = dataGetter.getFiles()
+    print("Getting training images...")
+    trainImg = dataGetter.getData(filenames[0,0])
+    print("Getting training targets...")
+    trainTarg = dataGetter.getData(filenames[0,1])
+    print("Data retrieved")
+    return trainImg, trainTarg
 
 def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M,filters,FMPools):
     xplt = np.arange(E)
