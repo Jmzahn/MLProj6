@@ -89,10 +89,12 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M,filters):
     itt = np.intc(0)
     
     while(itt<E):#training loop
-        flatFMpools, FMPools = ArbConvolve(X,convShape,filters)
+        shuffled_index = np.random.permutation(X.shape[0])
+        batch_train_X = X[shuffled_index[:20]]
+        batch_train_Y = T[shuffled_index[:20]]
+        flatFMpools, FMPools = ArbConvolve(batch_train_X,convShape,filters)
         Z = forwardProp(flatFMpools,W,B,hfinal,h,L,shape)
-        target = T
-        W, B, yplt, err = backProp(Z,target,R,hP,W,B,L,shape,itt,yplt,loss,M)
+        W, B, yplt, err = backProp(Z,batch_train_Y,R,hP,W,B,L,shape,itt,yplt,loss,M)
         convBackprop(err, {X, FMPools})#TODO
         line1.set_ydata(yplt)
         if itt%20==0:#line plotting 
