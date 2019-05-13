@@ -45,7 +45,7 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
         #b = (np.float64(2.0)*np.random.rand(shape[itt+1],shape[0]).astype(np.float64) - np.float64(1.0))#
         B.append(b)
         
-    W, y = fit(X,T,W,B,E,R,L,convShape, shape,hfinal,h,hPrime,loss,M)   
+    W, y = fit(X,T,W,B,E,R,L, convShape, shape, hfinal, h, hPrime, loss, M)   
     print(y[-1])
     return W, y
 
@@ -240,6 +240,25 @@ def backProp(y,T,R,hP,W,B,L,shape,itt,yplt,loss,M):
         dlta.append(err)
         itter-=np.intc(1)
     return w, b, yplt
+
+# cache is the stored X and W values from the previous forward pass
+def convBackprop(dH, cache, stride):
+    (X, W) = cache
+    (nHprev, nWprev) = X.shape
+    (f,f) = W.shape
+
+    (nH, nW) = dH.shape
+
+    dX = np.zeros(X.shape)
+    dW = np.zeros(W.shape)
+
+    for itt in range (nH):
+        for itt2 in range (nW):
+            dX[itt:itt+f, itt2:itt2+f] += W * dH(itt, itt2)
+            dW += X[itt:itt+f, itt2:itt2+f] * dH(itt, itt2)
+
+    return dX, dW
+
 
 def tanh(x):
     return (np.float64(1.0)-np.exp(np.float64(-2.0)*x)/(np.float64(1.0) + np.exp(np.float64(-2.0)*x)))
