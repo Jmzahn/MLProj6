@@ -21,8 +21,8 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
     filters = []
     FMPools = []
     X, T = getData()
-    X -= int(np.mean(X))
-    X /= int(np.std(X))
+    # X -= int(np.mean(X))
+    # X /= np.std(X)
 
     loss = crossEntropy
     hfinal = softMax
@@ -39,7 +39,7 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
     FMPools.append(pool(relu(conv(X[0],filters[-1]))))
     while(itt < len(convShape)):#for each layer after the first
             stddev = 1/np.sqrt(np.prod(convShape[itt][1]))
-            LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[itt][0],convShape[itt][1],convShape[itt][1],FMPools[-1].shape[-1]))
+            LFilter = np.random.normal(loc = 0, scale = stddev, size = (convShape[itt][0],convShape[itt][1],convShape[itt][1]))
             filters.append(LFilter)
             FMPools.append(pool(relu(conv(X[0],filters[-1]))))
             itt += np.intc(1)
@@ -59,7 +59,7 @@ def Network(convShape,shape,e,r,m):#convShape = array, (convLayers X 2), [numFil
         #b = (np.float64(2.0)*np.random.rand(shape[itt+1],shape[0]).astype(np.float64) - np.float64(1.0))#
         B.append(b)
         
-    W, y = fit(X,T,W,B,E,R,L, convShape, shape, hfinal, h, hPrime, loss, M, filters, FMPools)   
+    W, y = fit(X,T,W,B,E,R,L, convShape, shape, hfinal, h, hPrime, loss, M, filters)   
     print(y[-1])
     return W, y
 
@@ -73,7 +73,7 @@ def getData():#TODO
     print("Data retrieved")
     return trainImg, trainTarg
 
-def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M,filters,FMPools):
+def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M,filters):
     xplt = np.arange(E)
     yplt = np.zeros((E),dtype=np.float64)
     #plot stuff
@@ -89,13 +89,14 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M,filters,FMPools):
     itt = np.intc(0)
     
     while(itt<E):#training loop
-        flatFMpools, FMPools = ArbConvolve(X,convShape,filters,FMPools)
+        flatFMpools, FMPools = ArbConvolve(X,convShape,filters)
         Z = forwardProp(flatFMpools,W,B,hfinal,h,L,shape)
         target = T
         W, B, yplt, err = backProp(Z,target,R,hP,W,B,L,shape,itt,yplt,loss,M)
         convBackprop(err, {X, FMPools})#TODO
         line1.set_ydata(yplt)
         if itt%20==0:#line plotting 
+            print(itt)
             ax.relim()
             ax.autoscale_view()
             fig.canvas.draw()
@@ -107,19 +108,20 @@ def fit(X,T,W,B,E,R,L,convShape,shape,hfinal,h,hP,loss,M,filters,FMPools):
     
     return W, Z
     
-def ArbConvolve(imgs, convShape, filters, FMPools):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
+def ArbConvolve(imgs, convShape, filters):#convShape = ndarray, (convLayers X 2), [numFilters,filterSize]
     filters = filters
-    FMPools = FMPools
+    FMPools = []
     flatFMPools = []
-    flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
     #this while loop uses the filters created and then goes through the rest of the images
-    it=np.intc(1)
+    it=np.intc(0)
     while(it < imgs.shape[0]):#for num of imgs
+        print("img:", it)
         itt=np.intc(0)
         while(itt < len(filters)):#for each layer
             FMPools.append(pool(relu(conv(imgs[it],filters[itt]))))
+            
             itt += np.intc(1)
-        flatFMPools.append(FMPools[-1].reshape((filters[-1].shape[0]*filters[-1].shape[1]*filters[-1].shape[0],1)))
+        flatFMPools.append(FMPools[-1].reshape((FMPools[-1].size,1)))
         it += np.intc(1)
     return flatFMPools, FMPools
 
@@ -142,7 +144,8 @@ def conv(img, conv_filter):
     
     # Convolving the image by the filter(s).
     for filter_num in range(conv_filter.shape[0]):
-        print("Filter ", filter_num + 1)
+        # print("Filter ", filter_num + 1)
+        
         curr_filter = conv_filter[filter_num, :] # getting a filter from the bank.
         """ 
         Checking if there are mutliple channels for the single filter.
@@ -163,29 +166,29 @@ def conv_(img, conv_filter):
     filter_size = conv_filter.shape[1]
     result = np.zeros((img.shape))
     #Looping through the image to apply the convolution operation.
-    for r in np.arange(filter_size/2.0, img.shape[0]-filter_size/2.0+1):
-        for c in np.arange(filter_size/2.0, img.shape[1]-filter_size/2.0+1):
+    for r in np.arange(filter_size/2.0, img.shape[0]-filter_size/2.0+1, dtype = np.intc):
+        for c in np.arange(filter_size/2.0, img.shape[1]-filter_size/2.0+1, dtype = np.intc):
             """
             Getting the current region to get multiplied with the filter.
             How to loop through the image and get the region based on 
             the image and filer sizes is the most tricky part of convolution.
             """
-            curr_region = img[r-np.uint16(np.floor(filter_size/2.0)):r+np.uint16(np.ceil(filter_size/2.0)), 
-                              c-np.uint16(np.floor(filter_size/2.0)):c+np.uint16(np.ceil(filter_size/2.0))]
+            curr_region = img[r-np.intc(np.floor(filter_size/2.0)):r+np.intc(np.ceil(filter_size/2.0)), \
+                              c-np.intc(np.floor(filter_size/2.0)):c+np.intc(np.ceil(filter_size/2.0))]
             #Element-wise multipliplication between the current region and the filter.
             curr_result = curr_region * conv_filter
             conv_sum = np.sum(curr_result) #Summing the result of multiplication.
             result[r, c] = conv_sum #Saving the summation in the convolution layer feature map.
             
     #Clipping the outliers of the result matrix.
-    final_result = result[np.uint16(filter_size/2.0):result.shape[0]-np.uint16(filter_size/2.0), 
-                          np.uint16(filter_size/2.0):result.shape[1]-np.uint16(filter_size/2.0)]
+    final_result = result[np.intc(filter_size/2.0):result.shape[0]-np.intc(filter_size/2.0), \
+                          np.intc(filter_size/2.0):result.shape[1]-np.intc(filter_size/2.0)]
     return final_result
 
 def pool(feature_map, size=2, stride=2):
     #Preparing the output of the pooling operation.
-    pool_out = np.zeros((np.uint16((feature_map.shape[0]-size+1)/stride+1),
-                            np.uint16((feature_map.shape[1]-size+1)/stride+1),
+    pool_out = np.zeros((np.intc((feature_map.shape[0]-size+1)/stride+1), \
+                            np.intc((feature_map.shape[1]-size+1)/stride+1),  \
                             feature_map.shape[-1]))
     for map_num in range(feature_map.shape[-1]):
         r2 = 0
