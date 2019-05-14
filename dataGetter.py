@@ -17,8 +17,8 @@ def getData(filename):
         rowNum = int.from_bytes(f.read(4), byteorder = 'big')
         colNum = int.from_bytes(f.read(4), byteorder = 'big')
 
-        picMat = np.zeros((imgNum, rowNum, colNum), dtype = np.intc)
-        for itt in range(imgNum):
+        picMat = np.zeros((int(imgNum / 3), rowNum, colNum, 1), dtype = np.intc)
+        for itt in range(int(imgNum / 3)):      # only reading a third of the data for speed in the short term
             for itt2 in range(rowNum):
                 for itt3 in range(colNum):
                     pixel = int.from_bytes(f.read(1), byteorder = 'big')
