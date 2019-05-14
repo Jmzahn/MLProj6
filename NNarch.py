@@ -217,13 +217,13 @@ def relu(feature_map):
     return relu_out
 
 def reluPrime(featureMap):
-    out = np.zeros(featureMap.shape)
+    out = np.zeros((featureMap.shape[0], featureMap[0].shape[0], featureMap[0][0].shape[0], featureMap[0][0].shape[1]))
     for mapNum in range (featureMap.shape[0]):
-        for r in np.arrage(0, featureMap.shape[1]):
-            for c in np.arrange(featureMap.shape[2]):
-                if featureMap[mapNum, r, c] < 0:
-                    out[mapNum, r, c] = 0
-                else: out[mapNum, r, c] = 1
+        for r in np.arange(0, featureMap[0].shape[0]):
+            for c in np.arange(featureMap[0][0].shape[0]):
+                if featureMap[mapNum][r][c] < 0:
+                    out[mapNum][r][c] = 0
+                else: out[mapNum][r][c] = 1
 
     return out
 
@@ -274,18 +274,19 @@ def convBackProp(featureMap, W, err, Rate):
     dW = []
     w = W
 
-    newFeatureMap = np.zeros((Layers, len(featureMap) / Layers))
-    for itt in range (len(featureMap)):
-        newFeatureMap[itt % Layers, np.floor(itt / Layers)] = featureMap[itt]
+    newFeatureMap = []
+    for itt in range (0, int(len(featureMap)), Layers):
+        newFeatureMap.append(np.array((featureMap[itt], featureMap[itt + 1])))
+    newFeatureMap = np.squeeze(np.array(newFeatureMap).T)
 
     for itt in range (newFeatureMap.shape[0]):
         dW.append(-Rate * np.dot(deltas[-1], newFeatureMap[Layers - itt - 1].T))
-        np.add(w[Layers - itt - 1], dW, out = w[Layers - itt - 1])
+        w[Layers - itt - 1] = np.add(w[Layers - itt - 1], dW)
         summer = np.double(0)
         reluCalc = (reluPrime(newFeatureMap[Layers - itt - 1]))
         for itt2 in range (w[Layers - itt - 1].shape[0]):
-            summer += np.dot(w[Layers - itt - 1, itt2], deltas[-1])
-        deltas.append(reluCalc * summer)
+            summer += np.dot(w[Layers - itt - 1][itt2], deltas[-1])
+        deltas.append(np.squeeze(reluCalc).T * summer.T)
 
     return w, deltas
 
