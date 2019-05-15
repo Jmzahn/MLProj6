@@ -1,4 +1,5 @@
 import gzip
+import io
 import numpy as np
 
 __name__ = 'dataGetter'
@@ -16,20 +17,23 @@ def getData(filename):
         imgNum = int.from_bytes(f.read(4), byteorder = 'big')
         rowNum = int.from_bytes(f.read(4), byteorder = 'big')
         colNum = int.from_bytes(f.read(4), byteorder = 'big')
-
-        picMat = np.zeros((int(imgNum / 3), rowNum, colNum, 1), dtype = np.intc)
-        for itt in range(int(imgNum / 3)):      # only reading a third of the data for speed in the short term
-            for itt2 in range(rowNum):
-                for itt3 in range(colNum):
-                    pixel = int.from_bytes(f.read(1), byteorder = 'big')
-                    picMat[itt, itt2, itt3] = pixel
+        
+        #picMat = np.zeros((int(imgNum), rowNum, colNum), dtype = np.float32)
+        picMat = np.frombuffer(f.read(),'B')
+        picMat = picMat.reshape(imgNum,28,28,1).astype('float32')/255
+        #for itt in range(int(imgNum / 3)):      # only reading a third of the data for speed in the short term
+        #    for itt2 in range(rowNum):
+        #        for itt3 in range(colNum):
+        #            pixel = int.from_bytes(f.read(1), byteorder = 'big')
+        #            picMat[itt, itt2, itt3] = pixel
         return picMat
 
     else:
         length = int.from_bytes(f.read(4), byteorder='big')
-        Labels = np.zeros(length, dtype = np.intc)
-        for itt in range(length):
-            Labels[itt] = int.from_bytes(f.read(1), byteorder = 'big')
+        Labels = np.frombuffer(f.read(),'B')
+        Labels = Labels.reshape(length,1).astype('float32')
+        #for itt in range(length):
+        #    Labels[itt] = float.from_bytes(f.read(1), byteorder = 'big')
         return Labels
 
 def getFiles():
